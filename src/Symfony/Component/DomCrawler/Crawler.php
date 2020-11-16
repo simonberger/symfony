@@ -34,6 +34,11 @@ class Crawler implements \Countable, \IteratorAggregate
     private $namespaces = [];
 
     /**
+     * @var array A map of cached namespaces
+     */
+    private $cachedNamespaces = [];
+
+    /**
      * @var string The base href value
      */
     private $baseHref;
@@ -99,6 +104,7 @@ class Crawler implements \Countable, \IteratorAggregate
     {
         $this->nodes = [];
         $this->document = null;
+        $this->cachedNamespaces = [];
     }
 
     /**
@@ -1034,6 +1040,8 @@ class Crawler implements \Countable, \IteratorAggregate
             $crawler->add($domxpath->query($xpath, $node));
         }
 
+        $crawler->cachedNamespaces = $this->cachedNamespaces;
+
         return $crawler;
     }
 
@@ -1250,10 +1258,17 @@ class Crawler implements \Countable, \IteratorAggregate
             return $this->namespaces[$prefix];
         }
 
+        if (\array_key_exists($prefix, $this->cachedNamespaces)) {
+            return $this->cachedNamespaces[$prefix];
+        }
+
         // ask for one namespace, otherwise we'd get a collection with an item for each node
         $namespaces = $domxpath->query(sprintf('(//namespace::*[name()="%s"])[last()]', $this->defaultNamespacePrefix === $prefix ? '' : $prefix));
 
-        return ($node = $namespaces->item(0)) ? $node->nodeValue : null;
+        $namespace = ($node = $namespaces->item(0)) ? $node->nodeValue : null;
+        $this->cachedNamespaces[$prefix] = $namespace;
+
+        return $namespace;
     }
 
     private function findNamespacePrefixes(string $xpath): array
@@ -1278,6 +1293,7 @@ class Crawler implements \Countable, \IteratorAggregate
         $crawler->isHtml = $this->isHtml;
         $crawler->document = $this->document;
         $crawler->namespaces = $this->namespaces;
+        $crawler->cachedNamespaces = $this->cachedNamespaces;
         $crawler->html5Parser = $this->html5Parser;
 
         return $crawler;

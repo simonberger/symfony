@@ -1162,6 +1162,18 @@ class Crawler implements \Countable, \IteratorAggregate
     }
 
     /**
+     * Returns an Iterator over a Crawler instance of any child node
+     *
+     * @return \ArrayIterator|Crawler[]
+     */
+    public function getSubCrawlerIterator(): \Traversable
+    {
+        return new \ArrayIterator(array_map(function($node) {
+            return $this->createSubCrawler($node);
+        }, $this->nodes));
+    }
+
+    /**
      * @param \DOMElement $node
      * @param string      $siblingDir
      *

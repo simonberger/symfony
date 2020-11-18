@@ -766,9 +766,15 @@ class Crawler implements \Countable, \IteratorAggregate
      * @param string $xpath An XPath expression
      *
      * @return static
+     *
+     * @throws \InvalidArgumentException If contextNode is not null and not part of the document of this crawler
      */
-    public function filterXPath($xpath)
+    public function filterXPath($xpath, \DOMNode $contextNode = null)
     {
+        if (null !== $contextNode && $contextNode->ownerDocument !== $this->document) {
+            throw new \InvalidArgumentException('The passed contextNode must be part of the document of this crawler.');
+        }
+
         $xpath = $this->relativize($xpath);
 
         // If we dropped all expressions in the XPath while preparing it, there would be no match
@@ -776,7 +782,7 @@ class Crawler implements \Countable, \IteratorAggregate
             return $this->createSubCrawler(null);
         }
 
-        return $this->filterRelativeXPath($xpath);
+        return $this->filterRelativeXPath($xpath, null !== $contextNode ? [$contextNode] : null);
     }
 
     /**
@@ -1027,15 +1033,20 @@ class Crawler implements \Countable, \IteratorAggregate
      *
      * The XPath expression should already be processed to apply it in the context of each node.
      *
+     * @param \DOMNodeList|\DOMNode[]|null $nodes
      * @return static
      */
-    private function filterRelativeXPath(string $xpath)
+    private function filterRelativeXPath(string $xpath, array $nodes = null)
     {
         $prefixes = $this->findNamespacePrefixes($xpath);
 
         $crawler = $this->createSubCrawler(null);
 
-        foreach ($this->nodes as $node) {
+        if (null === $nodes) {
+            $nodes = $this->nodes;
+        }
+
+        foreach ($nodes as $node) {
             $domxpath = $this->createDOMXPath($node->ownerDocument, $prefixes);
             $crawler->add($domxpath->query($xpath, $node));
         }
